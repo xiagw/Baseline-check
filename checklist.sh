@@ -11,11 +11,24 @@ print_pass() {
 	echo -e "\033[32m++> PASS \033[0m"
 	#echo "++> PASS""$1" >> "$file"
 }
+# 绿色字体输出检测通过
+count_pass=0
+_echo_pass() {
+	echo -e "\033[32m++> PASS \033[0m"
+	count_pass=$((count_pass + 1))
+}
 # 红色字体输出检测失败FAIL
 fail=$((fail + 1))
 print_fail() {
 	echo -e "\033[31m--> FAIL \033[0m"
+	count_fail=$((count_fail + 1))
 	#echo "--> FAIL""$1" >> "$file"
+}
+# 红色字体输出检测失败FAIL
+count_fail=0
+_echo_fail() {
+	echo -e "\033[31m--> FAIL \033[0m"
+	count_fail=$((count_fail + 1))
 }
 # 黄色字体输出需手工再检查的项
 print_manual_check() {
@@ -84,27 +97,27 @@ index=$((index + 1))
 print_check_point $index "$check_point"
 #在文件etc/login.defs中搜索pass_max_days的值，并且去掉#自开头的值
 #grep -v '^#'    ------>  不匹配以#开头的行
-passmax=$(grep PASS_MAX_DAYS /etc/login.defs | grep -v '^#')
+passmax=$(grep '^PASS_MAX_DAYS' /etc/login.defs)
 print_info "'PASS_MAX_DAYS 应介于1~90'"
 
 print_info "$passmax"
 if [ -n "$passmax" ]; then
 	days=$(echo "$passmax" | awk '{print $2}')
-
 	if [ "$days" -gt 90 ]; then
-		echo "2.1	检查是否以设置口令生存周期	重要	建议调整	长期不修改密码会增加密码暴露风险，除入域服务器或服务器超管账号分段管理无需配置外，应对服务器密码最长使用期限进行限制。此检查项建议调整	<=90	$days	FAIL	 	 " >>"$csvFile"
+		tmp_msg="$days	FAIL"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
 		pass=$((pass + 1))
-		print_pass
-		echo "2.1	检查是否以设置口令生存周期	重要	建议调整	长期不修改密码会增加密码暴露风险，除入域服务器或服务器超管账号分段管理无需配置外，应对服务器密码最长使用期限进行限制。此检查项建议调整	<=90	$days	TRUE	 	 " >>"$csvFile"
+		_echo_pass
+		tmp_msg="$days	TRUE"
 	fi
 else
 	fail=$((fail + 1))
-	print_fail
-	echo "2.1	检查是否以设置口令生存周期	重要	建议调整	长期不修改密码会增加密码暴露风险，除入域服务器或服务器超管账号分段管理无需配置外，应对服务器密码最长使用期限进行限制。此检查项建议调整	<=90	无此配置	FAIL	 	 " >>"$csvFile"
+	_echo_fail
+	tmp_msg="无此配置	FAIL"
 fi
+echo "2.1	检查是否以设置口令生存周期	重要	建议调整	长期不修改密码会增加密码暴露风险，除入域服务器或服务器超管账号分段管理无需配置外，应对服务器密码最长使用期限进行限制。此检查项建议调整	<=90	$tmp_msg	 	 " >>"$csvFile"
 print_dot_line
 
 #check_point="账号口令-2:检查是否设置口令更改最小间隔天数 "
@@ -119,16 +132,16 @@ print_dot_line
 #  if [ "$days" -lt 7 ]; then
 #	echo "2.2	检查是否设置口令更改最小间隔天数	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应##为8位。此检查项建议调整	>=8	$days	FAIL" >> "$csvFile"
 #      fail=$((fail+1))
-#      print_fail
+#      _echo_fail
 #  else
 #	echo "2.2	检查是否设置口令更改最小间隔天数	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应#为8位。此检查项建议调整	>=8	$days	TRUE"  >> "$csvFile"
 #      pass=$((pass+1))
-#      print_pass
+#      _echo_pass
 #  fi
 #else
 #  echo "2.2	检查是否设置口令更改最小间隔天数	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应为8位。此检查项建议调整	>=8	null	FAIL" >> "$csvFile"
 #  fail=$((fail+1))
-#  print_fail
+#  _echo_fail
 #fi
 #print_dot_line
 
@@ -142,19 +155,20 @@ print_info "$passminlen"
 if [ -n "$passminlen" ]; then
 	days=$(echo "$passminlen" | awk '{print $2}')
 	if [ "$days" -lt 8 ]; then
-		echo "2.2	检查是否设置口令最小长度	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应为8位。此检查项建议调整	>=8	$days	FAIL		" >>"$csvFile"
+		tmp_msg="$days	FAIL"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
-		echo "2.2	检查是否设置口令最小长度	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应为8位。此检查项建议调整	>=8	$days	TRUE		" >>"$csvFile"
+		tmp_msg="$days	TRUE"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 else
-	echo "2.2	检查是否设置口令最小长度	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应为8位。此检查项建议调整	>=8	null	FAIL		" >>"$csvFile"
+	tmp_msg="null	FAIL"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
+echo "2.2	检查是否设置口令最小长度	重要	建议调整	密码长度过短会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，口令长度最小值应为8位。此检查项建议调整	>=8	$tmp_msg		" >>"$csvFile"
 print_dot_line
 
 check_point="账号口令-2.3:检查是否设置口令过期警告天数 "
@@ -166,19 +180,20 @@ print_info "$passwarn"
 if [ -n "$passwarn" ]; then
 	days=$(echo "$passwarn" | awk '{print $2}')
 	if [ "$days" -lt 30 ]; then
-		echo "2.3	检查是否设置口令过期警告天数	重要	建议调整	除入域服务器超管账号分段管理无需配置外，应配置密码过期提醒策略防止密码过期无法登陆。此检查项建议调整	>=30	20	FAIL	 	" >>"$csvFile"
+		tmp_msg='FAIL'
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
-		echo "2.3	检查是否设置口令过期警告天数	重要	建议调整	除入域服务器超管账号分段管理无需配置外，应配置密码过期提醒策略防止密码过期无法登陆。此检查项建议调整	>=30	20	TRUE	 	" >>"$csvFile"
+		tmp_msg='TRUE'
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 else
-	echo "2.3	检查是否设置口令过期警告天数	重要	建议调整	除入域服务器超管账号分段管理无需配置外，应配置密码过期提醒策略防止密码过期无法登陆。此检查项建议调整	>=30	20	FAIL	 	" >>"$csvFile"
+	tmp_msg='FAIL'
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
+echo "2.3	检查是否设置口令过期警告天数	重要	建议调整	除入域服务器超管账号分段管理无需配置外，应配置密码过期提醒策略防止密码过期无法登陆。此检查项建议调整	>=30	20	$tmp_msg	 	" >>"$csvFile"
 print_dot_line
 
 check_point="账号口令-2.4:检查设备密码复杂度策略 "
@@ -232,14 +247,14 @@ fi
 
 if [ "$flag" -eq 1 ]; then
 	pass=$((pass + 1))
-	echo "2.4	检查设备密码复杂度策略	重要	建议调整	密码复杂度过低会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，密码复杂度应包含特殊字符、大小写字母。此检查项建议调整	至少有1个大写字母、1个小写字母、1个数字、1个特殊字符	null	TRUE	 	" >>"$csvFile"
-	print_pass
+	_echo_pass
+	tmp_msg='TRUE'
 else
-	echo "2.4	检查设备密码复杂度策略	重要	建议调整	密码复杂度过低会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，密码复杂度应包含特殊字符、大小写字母。此检查项建议调整	至少有1个大写字母、1个小写字母、1个数字、1个特殊字符	null	FAIL	 	" >>"$csvFile"
+	tmp_msg='FALSE'
 	fail=$((fail + 1))
-	print_fail
-
+	_echo_fail
 fi
+echo "2.4	检查设备密码复杂度策略	重要	建议调整	密码复杂度过低会增加密码被爆破风险，按照企业密码管理要求与等级保护标准，密码复杂度应包含特殊字符、大小写字母。此检查项建议调整	至少有1个大写字母、1个小写字母、1个数字、1个特殊字符	null	$tmp_msg	 	" >>"$csvFile"
 
 print_dot_line
 check_point="口令策略-2.5 :检查是否存在空口令账号"
@@ -250,14 +265,15 @@ print_info "'不允许存在空口令的账号'"
 tmp=$(awk -F: '($2 == "" ) { print "user " $1 " does not have a password "}' /etc/shadow)
 print_info '空口令账号:'"[ $tmp ]"
 if [ -z "$tmp" ]; then
-	echo "2.5	检查是否存在空口令账户	重要	建议调整	由于空口令会让攻击者不需要口令进入系统，存在较大风险。此检查项建议调整	不存在空口令账户	$tmp	TRUE	 	" >>"$csvFile"
+	tmp_msg='TRUE'
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
-	echo "2.5	检查是否存在空口令账户	重要	建议调整	由于空口令会让攻击者不需要口令进入系统，存在较大风险。此检查项建议调整	不存在空口令账户	$tmp	FAIL	 	" >>"$csvFile"
+	tmp_msg='FALSE'
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
+echo "2.5	检查是否存在空口令账户	重要	建议调整	由于空口令会让攻击者不需要口令进入系统，存在较大风险。此检查项建议调整	不存在空口令账户	$tmp	$tmp_msg	 	" >>"$csvFile"
 print_dot_line
 check_point="帐号管理-2.6:检查是否设置除root之外UID为0的用户"
 index=$((index + 1))
@@ -270,14 +286,15 @@ print_info "UID为0的用户如下:"
 print_info "[ $result ]"
 
 if [ "root" = "$result" ]; then
-	echo "2.6	检查是否设置除root之外UID为0的用户	一般	建议调整	不可设置除root之外，第二个具有root权限的账户。此检查项建议调整	root	$result	TRUE		" >>"$csvFile"
+	tmp_msg='TRUE'
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
-	echo "2.6	检查是否设置除root之外UID为0的用户	一般	建议调整	不可设置除root之外，第二个具有root权限的账户。此检查项建议调整	root	$result	FAIL		" >>"$csvFile"
+	tmp_msg='FALSE'
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
+echo "2.6	检查是否设置除root之外UID为0的用户	一般	建议调整	不可设置除root之外，第二个具有root权限的账户。此检查项建议调整	root	$result	$tmp_msg		" >>"$csvFile"
 
 print_dot_line
 
@@ -819,12 +836,12 @@ tt1=$(echo "$tmp1" | grep 027)
 if [ -n "$tt" ] || [ -n "$tt1" ]; then
 	echo "3.4	检查用户目录缺省访问权限设置	重要	建议调整	控制用户缺省访问权限，当在创建新文件或目录时应屏蔽掉新文件或目录不应有的访问允许权限，防止同属于改组的其他用户及别的组的用户修改用户的文件或更高限制。此检查项建议调整	027	$tt	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "3.4	检查用户目录缺省访问权限设置	重要	建议调整	控制用户缺省访问权限，当在创建新文件或目录时应屏蔽掉新文件或目录不应有的访问允许权限，防止同属于改组的其他用户及别的组的用户修改用户的文件或更高限制。此检查项建议调整	027	$tt	FAIL		" >>"$csvFile"
 	print_info "设置 umask 027 "
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -840,14 +857,14 @@ if [ -z "$banner1" ]; then
 	echo "3.5	检查是否设置SSH登录前警告Banner	可选	建议调整	检查是否设置ssh登陆前的警告Banner信息，警示登陆系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$banner1	TRUE		" >>"$csvFile"
 	print_info "不存在Banner配置项"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	banner2=$(grep Banner /etc/ssh/sshd_config | awk '{print $2}' | grep -v "none")
 	if [ -n "$banner2" ]; then
 		echo "3.5	检查是否设置SSH登录前警告Banner	可选	建议调整	检查是否设置ssh登陆前的警告Banner信息，警示登陆系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$banner2	TRUE		" >>"$csvFile"
 		print_info "未配置Banner路径文件"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "3.5	检查是否设置SSH登录前警告Banner	可选	建议调整	检查是否设置ssh登陆前的警告Banner信息，警示登陆系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$banner2	MANUAL		" >>"$csvFile"
 		manual=$((manual + 1))
@@ -893,11 +910,11 @@ print_info "$tmp"
 if [ -n "$tmp" ]; then
 	echo "4.2	检查安全事件日志配置	可选	建议调整	应对安全时间日志文件进行配置。此检查项建议调整	参考《Linux安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "4.2	检查安全事件日志配置	可选	建议调整	应对安全时间日志文件进行配置。此检查项建议调整	参考《Linux安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1098,11 +1115,11 @@ print_info "$tmp"
 if [ -n "$tmp" ]; then
 	echo "4.4	检查是否对登录进行日志记录	重要	建议调整	应对登录时间日志文件进行配置，保证日志的完整性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "4.4	检查是否对登录进行日志记录	重要	建议调整	应对登录时间日志文件进行配置，保证日志的完整性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1117,11 +1134,11 @@ print_info "$tmp"
 if [ -n "$tmp" ]; then
 	echo "4.5	检查是否配置su命令使用情况记录	可选	建议调整	应配置su命令使用情况记录，保证高权限命令可审计。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "4.5	检查是否配置su命令使用情况记录	可选	建议调整	应配置su命令使用情况记录，保证高权限命令可审计。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1176,12 +1193,12 @@ print_info 'Protocol ==> '"[ $Protocol ]"
 #if [ "$PermitRootLogin" = "no" ] && [ "$Protocol" -eq 2 ]; then
 if [ "$Protocol" -eq 2 ]; then
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 	echo "5.1	检查系统openssh安全配置	一般	建议调整	openssh是使用加密的远程登录实现，可以有效保护登录及数据的安全。此检查项建议调整	2	$Protocol	TRUE		" >>"$csvFile"
 else
 	echo "5.1	检查系统openssh安全配置	一般	建议调整	openssh是使用加密的远程登录实现，可以有效保护登录及数据的安全。此检查项建议调整	2	$Protocol	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 
 print_dot_line
@@ -1196,17 +1213,17 @@ if [ -z "$snmp" ]; then
 	print_info "SNMP Server is not running..."
 	echo "5.2	检查是否修改SNMP默认团体字	一般	建议调整	snmp的默认团体字存在安全漏洞，容易导致服务器信息泄漏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$snmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	string=$(grep com2sec /etc/snmp/snmpd.conf | grep public | grep -v '^#')
 	if [ -n "$string" ]; then
 		echo "5.2	检查是否修改SNMP默认团体字	一般	建议调整	snmp的默认团体字存在安全漏洞，容易导致服务器信息泄漏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$snmp	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
 		echo "5.2	检查是否修改SNMP默认团体字	一般	建议调整	snmp的默认团体字存在安全漏洞，容易导致服务器信息泄漏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$snmp	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 fi
 print_dot_line
@@ -1234,7 +1251,7 @@ if [ -z "$tmp" ]; then
 	print_info "No FTP Service"
 	echo "5.4	检查是否禁止root用户登录FTP	一般	建议调整	由于root用户权限过大，容易导致系统文件误删除。此检查项建议调整	null	略	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	print_info "1.FTP服务正在运行..."
 	print_info "2.检查 /etc/vsftpd/ftpusers 配置文件中是否有root，以下是文件内容"
@@ -1243,11 +1260,11 @@ else
 	if [ -n "$root" ]; then
 		echo "5.4	检查是否禁止root用户登录FTP	一般	建议调整	由于root用户权限过大，容易导致系统文件误删除。此检查项建议调整	null	略	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "5.4	检查是否禁止root用户登录FTP	一般	建议调整	由于root用户权限过大，容易导致系统文件误删除。此检查项建议调整	null	略	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 print_dot_line
@@ -1263,18 +1280,18 @@ if [ -z "$tmp" ]; then
 	echo "5.5	检查是否禁止匿名用户登录FTP	重要	建议调整	由于匿名用户对被黑客用来进入ftp，导致系统文件的保密性和完整性遭到破坏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	print_info "No FTP Service"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	tmp=$(grep "anonymous_enable=NO" /etc/vsftpd/vsftpd.conf | grep -v '^#')
 	if [ -z "$tmp" ]; then
 		print_info "$tmp"
 		echo "5.5	检查是否禁止匿名用户登录FTP	重要	建议调整	由于匿名用户对被黑客用来进入ftp，导致系统文件的保密性和完整性遭到破坏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
 		echo "5.5	检查是否禁止匿名用户登录FTP	重要	建议调整	由于匿名用户对被黑客用来进入ftp，导致系统文件的保密性和完整性遭到破坏。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 fi
 print_dot_line
@@ -1289,7 +1306,7 @@ if [ -z "$TMOUT" ]; then
 	print_info "没有设置超时时间TMOUT"
 	echo "6.1	检查是否设置命令行界面超时退出	重要	自行判断	根据等保要求，建议设置超时时间不大于600s，此检查项建议系统管理员根据系统情况自行判断	<=600	$TMOUT	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	TMOUT=$(grep -i TMOUT /etc/profile | grep -E -v ^\# | awk -F "=" '{print $2}')
 	#echo "$TMOUT"
@@ -1297,12 +1314,12 @@ else
 		print_info "TMOUT值过大:""$TMOUT"
 		echo "6.1	检查是否设置命令行界面超时退出	重要	自行判断	根据等保要求，建议设置超时时间不大于600s，此检查项建议系统管理员根据系统情况自行判断	<=600	$TMOUT	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	else
 		print_info "TMOUT:""$TMOUT"
 		echo "6.1	检查是否设置命令行界面超时退出	重要	自行判断	根据等保要求，建议设置超时时间不大于600s，此检查项建议系统管理员根据系统情况自行判断	<=600	$TMOUT	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 fi
 print_dot_line
@@ -1320,11 +1337,11 @@ if [ -n "$grub" ]; then
 	if [ -n "$grub_pass" ]; then
 		echo "6.2	检查是否设置系统引导管理器密码	可选	自行判断	应根据引导器不同类型设置引导管理器密码。此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$grub_pass	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.2	检查是否设置系统引导管理器密码	可选	自行判断	应根据引导器不同类型设置引导管理器密码。此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$grub_pass	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 
@@ -1334,11 +1351,11 @@ if [ -n "$lilo" ]; then
 	if [ -n "$lilo_pass" ]; then
 		echo "6.2	检查是否设置系统引导管理器密码	可选	自行判断	应根据引导器不同类型设置引导管理器密码。此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$grub_pass	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.2	检查是否设置系统引导管理器密码	可选	自行判断	应根据引导器不同类型设置引导管理器密码。此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$grub_pass	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 print_dot_line
@@ -1355,11 +1372,11 @@ if [ -z "$soft" ] && [ -z "$hard" ]; then
 
 	echo "6.3	检查系统coredump设置	一般	建议调整	需要检查系统cire dump设置，防止内存状态信息暴露，此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.3	检查系统coredump设置	一般	建议调整	需要检查系统cire dump设置，防止内存状态信息暴露，此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -1379,16 +1396,16 @@ if [ -n "$HISTSIZE" ] && [ -n "$HISTFILESIZE" ]; then
 	if [ "$HISTSIZE" -le 5 ] && [ "$HISTFILESIZE" -le 5 ]; then
 		echo "6.4	检查历史命令设置	可选	建议调整	根据等保要求，需保证历史命令文件HISTSIZE的值修改为5，此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$HISTSIZE，$HISTFILESIZE	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.4	检查历史命令设置	可选	建议调整	根据等保要求，需保证历史命令文件HISTSIZE的值修改为5，此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$HISTSIZE，$HISTFILESIZE	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 else
 	echo "6.4	检查历史命令设置	可选	建议调整	根据等保要求，需保证历史命令文件HISTSIZE的值修改为5，此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$HISTSIZE，$HISTFILESIZE	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 check_point="其他配置-6.5:检查是否使用PAM认证模块禁止wheel组之外的用户su为root"
@@ -1407,11 +1424,11 @@ print_info "$pam_wheel"
 if [ -n "$pam_rootok" ] && [ -n "$pam_wheel" ]; then
 	echo "6.5	检查是否使用PAM认证模块禁止wheel组之外的用户su为root	重要	建议调整	禁止wheel组外用户使用su命令，提高操作系统的完整性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	略	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.5	检查是否使用PAM认证模块禁止wheel组之外的用户su为root	重要	建议调整	禁止wheel组外用户使用su命令，提高操作系统的完整性。此检查项建议调整	s参考《Linux系统安全配置基线》对应章节	略	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 
 fi
 print_dot_line
@@ -1440,16 +1457,16 @@ if [ -n "$line" ]; then
 	if [ "$times" -ge 5 ]; then
 		echo "6.7	检查密码重复使用次数限制	一般	建议调整	检测密码重复使用次数，预防密码重复使用被爆破的风险。此检查项建议调整	>=5	$times	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.7	检查密码重复使用次数限制	一般	建议调整	检测密码重复使用次数，预防密码重复使用被爆破的风险。此检查项建议调整	>=5	$times	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 else
 	echo "6.7	检查密码重复使用次数限制	一般	建议调整	检测密码重复使用次数，预防密码重复使用被爆破的风险。此检查项建议调整	>=5	$times	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1534,11 +1551,11 @@ print_info "'检查是否配合配置了ls和rm命令别名'"
 #if [ -n "$aol" ] && [ -n "$rmi" ]; then
 #	echo "6.11	检查别名文件/etc/aliase	可选	自行判断	/etc/aliases是linux系统下的一种配置文件，作用是将使用者名称进行转换，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$aol，$rmi	TRUE		" >> "$csvFile"
 # pass=$((pass+1))
-#print_pass
+#_echo_pass
 #else
 #	echo "6.11	检查别名文件/etc/aliase	可选	自行判断	/etc/aliases是linux系统下的一种配置文件，作用是将使用者名称进行转换，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$aol，$rmi	FAIL		" >> "$csvFile"
 # fail=$((fail+1))
-#print_fail
+#_echo_fail
 #fi
 #print_dot_line
 
@@ -1556,11 +1573,11 @@ if [ -n "$find" ]; then
 	print_info "可以使用如: chmod a-s /usr/bin/change命令修改"
 	echo "6.12	检查拥有suid和sgid权限的文件	可选	建议调整	suid的管理上有漏洞，易被黑客利用suid来踢拳，来放后门控制linux主机。此检查项建议调整	$find		FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.12	检查拥有suid和sgid权限的文件	可选	建议调整	suid的管理上有漏洞，易被黑客利用suid来踢拳，来放后门控制linux主机。此检查项建议调整	$find		TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -1585,11 +1602,11 @@ print_dot_line
 #if [ -n "$chkrootkit" ]; then
 #	echo "6.14	检查是否安装chkrootkit进行系统监测	可选	自行判断	Chkrootkit工具是为了检测后门的一款程序，可视情况来确定是否安装，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$chkrootkit	TRUE		" >> "$csvFile"
 # pass=$((pass+1))
-# print_pass
+# _echo_pass
 #else
 #	echo "6.14	检查是否安装chkrootkit进行系统监测	可选	自行判断	Chkrootkit工具是为了检测后门的一款程序，可视情况来确定是否安装，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$chkrootkit	FAIL		" >> "$csvFile"
 #  fail=$((fail+1))
-#  print_fail
+#  _echo_fail
 #fi
 #print_dot_line
 
@@ -1603,11 +1620,11 @@ print_info "tcp_syncookies ==> "" [ $tcp_syncookies ]"
 if [ "$tcp_syncookies" -eq 1 ]; then
 	echo "6.14	检查系统内核参数配置	一般	建议调整	该项配置主要为了缓解拒绝服务攻击。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tcp_syncookies	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.14	检查系统内核参数配置	一般	建议调整	该项配置主要为了缓解拒绝服务攻击。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tcp_syncookies	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1644,11 +1661,11 @@ print_info "$PATH"
 if [ -z "$tmp" ]; then
 	echo "6.17	检查root用户的path环境变量	一般	建议调整	如果将（.和..）这来两者写入root的环境变量，执行脚本时，输入脚本名字后，系统会在当前的目录下执行该脚本，如脚本有危险命令，将会对系统造成较大影响。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.17	检查root用户的path环境变量	一般	建议调整	如果将（.和..）这来两者写入root的环境变量，执行脚本时，输入脚本名字后，系统会在当前的目录下执行该脚本，如脚本有危险命令，将会对系统造成较大影响。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1663,11 +1680,11 @@ print_info "$tmp"
 if [ -n "$tmp" ]; then
 	echo "6.18	检查系统是否禁用Ctrl+Alt+Delete组合键	一般	建议调整	linux操作系统只要按下Ctrl+Alt+Del快捷键，系统有时会重启。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.18	检查系统是否禁用Ctrl+Alt+Delete组合键	一般	建议调整	linux操作系统只要按下Ctrl+Alt+Del快捷键，系统有时会重启。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -1683,22 +1700,22 @@ print_info "检查是否存在equiv文件"
 if [ -n "$equiv" ]; then
 	echo "6.19.1	检查是否存在equiv文件	重要	建议调整	参考父项6.19	参考《Linux系统安全配置基线》对应章节	$equiv	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.19.1	检查是否存在equiv文件	重要	建议调整	参考父项6.19	参考《Linux系统安全配置基线》对应章节	$equiv	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 
 print_info "检查是否存在rhosts文件"
 if [ -n "$rhosts" ]; then
 	echo "6.19.2	检查是否存在rhosts文件	重要	建议调整	参考父项6.19	参考《Linux系统安全配置基线》对应章节	$rhosts	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.19.2	检查是否存在rhosts文件	重要	建议调整	参考父项6.19	参考《Linux系统安全配置基线》对应章节	$rhosts	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 
 print_dot_line
@@ -1723,7 +1740,7 @@ if [ "$flag" -eq 1 ]; then
 else
 	pass=$((pass + 1))
 	echo "6.20	检查磁盘空间占用率	可选	自行判断	磁盘动态分区空间不足，可能会导致系统卡慢与崩溃。此检查项建议系统管理员根据系统情况自行判断	<=80	略	TRUE		" >>"$csvFile"
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -1741,11 +1758,11 @@ print_info "equiv ==> "" [ $equiv ]"
 if [ -z "$rhost" ] && [ -z "$netrc" ] && [ -z "$equiv" ]; then
 	echo "6.21	检查是否删除了潜在危险文件	重要	建议调整	危险文件为删除可能导致用户无口令登录系统，存在较大风险。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$rhost，$netrc，$equiv	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.21	检查是否删除了潜在危险文件	重要	建议调整	危险文件为删除可能导致用户无口令登录系统，存在较大风险。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$rhost，$netrc，$equiv	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1777,11 +1794,11 @@ print_info "$group"" /etc/group"
 if [ "$passwd" -le 644 ] && [ "$shadow" -le 400 ] && [ "$group" -le 644 ]; then
 	echo "6.23	检查是否配置用户所需最小权限	一般	建议调整	权限配置应为满足使用场景的最小化权限。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$passwd，$shadow，$group	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.23	检查是否配置用户所需最小权限	一般	建议调整	权限配置应为满足使用场景的最小化权限。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$passwd，$shadow，$group	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1795,11 +1812,11 @@ print_info "实际值 ==> ip_forward:"" [ $ip_forward ] "
 if [ 0 -eq "$ip_forward" ]; then
 	echo "6.24	检查是否关闭数据包转发功能	可选	自行判断	Linux系统默认是禁止数据包转发的，如非系统需要，请关闭该功能。此检查项建议系统管理员根据系统情况自行判断	=0	$ip_forward	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.24	检查是否关闭数据包转发功能	可选	自行判断	Linux系统默认是禁止数据包转发的，如非系统需要，请关闭该功能。此检查项建议系统管理员根据系统情况自行判断	=0	$ip_forward	FAIL		" >>"$csvFile"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 fi
 print_dot_line
 
@@ -1829,17 +1846,17 @@ if [ -n "$ntpd" ]; then
 	if [ -n "$server" ]; then
 		echo "6.26	检查是否使用NTP(网络时间协议)保持时间同步	可选 建议调整	应保证windows系统的时间同步，提高系统日志的准确性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$server	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.26	检查是否使用NTP(网络时间协议)保持时间同步	可选 建议调整	应保证windows系统的时间同步，提高系统日志的准确性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$server	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 else
 	echo "6.26	检查是否使用NTP(网络时间协议)保持时间同步	可选 建议调整	应保证windows系统的时间同步，提高系统日志的准确性。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$server	TRUE		" >>"$csvFile"
 	print_info "==> NTP Service is not running..."
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -1853,7 +1870,7 @@ if [ -z "$tmp" ]; then
 	echo "6.27	检查NFS(网络文件系统)服务配置	可选	自行判断	如果需要NFS服务，需要限制能够访问NFS服务的IP范围，如果没有必要，需要停止NFS服务。此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	print_info "NFS 服务未启用..."
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	allow=$(grep -v '^#' /etc/hosts.allow)
 	deny=$(grep -v '^#' /etc/hosts.deny)
@@ -1861,12 +1878,12 @@ else
 		echo "6.27 检查NFS(网络文件系统)服务配置 TRUE" >>"$csvFile"
 		print_info "hosts.allow 和 hosts.deny皆已配置"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.27 检查NFS(网络文件系统)服务配置 FAIL" >>"$csvFile"
 		print_info "未配置hosts.allow 或 hosts.deny"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 print_dot_line
@@ -1896,7 +1913,7 @@ if [ -z "$tmp" ]; then
 	print_info "==>SSHD is not running..."
 	echo "6.29	检查是否设置SSH成功登录后Banner	可选	建议调整	检查是否设置ssh成功登录后的Banner信息，提示登录系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	temp=$(cat /etc/motd)
 	if [ -n "$temp" ]; then
@@ -1909,7 +1926,7 @@ else
 		print_info "/etc/motd文件中内容为空，不提示登录信息"
 		echo "6.29	检查是否设置SSH成功登录后Banner	可选	建议调整	检查是否设置ssh成功登录后的Banner信息，提示登录系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 fi
 print_dot_line
@@ -1946,7 +1963,7 @@ print_dot_line
 #else
 #echo "6.30	检查日志文件权限设置	可选	建议调整	徐检查日志文件权限设置，保证同组用户、其他组用户不得有写入、执行权限。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$messages，$secure，$maillog，$cron，$dmesg，$wtmp	FAIL		" >> "$csvFile"
 #fail=$((fail+1))
-#print_fail
+#_echo_fail
 #fi
 #print_dot_line
 
@@ -1961,20 +1978,20 @@ if [ -z "$tmp" ]; then
 	echo "6.30	检查FTP用户上传的文件所具有的权限	可选	建议调整	限制FTP用户登录后上传文件的属性，保证同组用户、其他用户不得有写入权限。此检查项建议调整	参考《Linux系统安全配置基线》对应要求	$tmp	TRUE		" >>"$csvFile"
 	print_info "No FTP Service"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	local_umask=$(grep local_umask /etc/vsftpd/vsftpd.conf | grep 022 | grep -v '^#')
 	anon_umask=$(grep anon_umask /etc/vsftpd/vsftpd.conf | grep 022 | grep -v '^#')
 	if [ -n "$local_umask" ] && [ -n "$anon_umask" ]; then
 		echo "6.30	检查FTP用户上传的文件所具有的权限	可选	建议调整	限制FTP用户登录后上传文件的属性，保证同组用户、其他用户不得有写入权限。此检查项建议调整	参考《Linux系统安全配置基线》对应要求	$tmp	TRUE		" >>"$csvFile"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	else
 		echo "6.30	检查FTP用户上传的文件所具有的权限	可选	建议调整	限制FTP用户登录后上传文件的属性，保证同组用户、其他用户不得有写入权限。此检查项建议调整	参考《Linux系统安全配置基线》对应要求	$tmp	FAIL		" >>"$csvFile"
 		print_info 'local_umask:'"[ $local_umask ]"
 		print_info 'anon_umask:'"[ $anon_umask ]"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 print_dot_line
@@ -1988,7 +2005,7 @@ if [ -z "$tmp" ]; then
 	echo "6.31	检查FTPbanner设置	可选	建议调整	检查是否设置ftp成功登录后的Banner信息，提示登录系统人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	略	TRUE		" >>"$csvFile"
 	print_info "FTP Service is not Running..."
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	echo "6.31	检查FTPbanner设置	可选	建议调整	检查是否设置ftp成功登录后的Banner信息，提示登录系统人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	略	MANUAL		" >>"$csvFile"
 	print_info "请手工检查/etc/vsftpd/vsftpd.conf文件中的banner是否符合要求"
@@ -2008,11 +2025,11 @@ if [ -n "$find" ]; then
 	print_info "$find"
 	print_info "把不必要的\"s\"属性去掉，或者把不用的直接删除;# chmod a-s filename"
 	fail=$((fail + 1))
-	print_fail
+	_echo_fail
 else
 	echo "6.32	检查/usr/bin/目录下可执行文件的拥有者属性	可选	建议调整	可执行文件拥有s属性在运行时可所以获得拥有者的权限，所以为了安全需要，需要作出修改。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	略	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 fi
 print_dot_line
 
@@ -2028,7 +2045,7 @@ if [ -z "$tmp" ]; then
 	print_info "==>Telnet service is not installed or not running..."
 	pass=$((pass + 1))
 	echo "6.33	检查Telnetbanner设置	可选	建议调整	检查是否设置telnet成功登录后的Banner信息，提示登录系统的人员。此检查项建议调整	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
-	print_pass
+	_echo_pass
 else
 	print_info "Please check /etc/issue、/etc/issue.net whether contains banner information"
 	manual=$((manual + 1))
@@ -2047,7 +2064,7 @@ if [ -z "$tmp" ]; then
 	print_info "No FTP Service Running"
 	echo "6.34	检查是否限制FTP用户登录后能访问的目录	可选	自行判断	限制FTP用户登录后能访问的目录，防止机密文件非授权访问，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	$tmp	TRUE		" >>"$csvFile"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 else
 	chroot_local_user=$(grep ^chroot_local_user=NO /etc/vsftpd/vsftpd.conf)
 	chroot_list_enable=$(grep ^chroot_list_enable=YES /etc/vsftpd/vsftpd.conf)
@@ -2055,11 +2072,11 @@ else
 	if [ -n "$chroot_local_user" ] && [ -n "$chroot_list_enable" ] && [ -n "$chroot_list_file" ]; then
 		pass=$((pass + 1))
 		echo "6.34	检查是否限制FTP用户登录后能访问的目录	可选	自行判断	限制FTP用户登录后能访问的目录，防止机密文件非授权访问，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	略	TRUE		" >>"$csvFile"
-		print_pass
+		_echo_pass
 	else
 		echo "6.34	检查是否限制FTP用户登录后能访问的目录	可选	自行判断	限制FTP用户登录后能访问的目录，防止机密文件非授权访问，此检查项建议系统管理员根据系统情况自行判断	参考《Linux系统安全配置基线》对应章节	略	FAIL		" >>"$csvFile"
 		fail=$((fail + 1))
-		print_fail
+		_echo_fail
 	fi
 fi
 print_dot_line
@@ -2091,26 +2108,26 @@ if [ "$kernel1" -eq 5 ]; then
 			print_info "$kernel"
 			print_info "该内核范围存在漏洞，请升级内核或打上补丁https://www.kernel.org"
 			fail=$((fail + 1))
-			print_fail
+			_echo_fail
 		else
 			echo "6.36	检查内核版本是否处于CVE-2021-43267漏洞影响范围	可选	建议调整	CVE-2021-43267漏洞是Linux内核TIPC模块中的一个堆溢出漏洞，攻击者利用该漏洞可以实现本地或远程代码执行漏洞	5.10-rc1<Linux kernel <5.14.16	$kernel	TRUE		" >>"$csvFile"
 			print_info "$kernel"
 			pass=$((pass + 1))
-			print_pass
+			_echo_pass
 		fi
 
 	else
 		echo "6.36	检查内核版本是否处于CVE-2021-43267漏洞影响范围	可选	建议调整	CVE-2021-43267漏洞是Linux内核TIPC模块中的一个堆溢出漏洞，攻击者利用该漏洞可以实现本地或远程代码执行漏洞	5.10-rc1<Linux kernel <5.14.16	$kernel	TRUE		" >>"$csvFile"
 		print_info "$kernel"
 		pass=$((pass + 1))
-		print_pass
+		_echo_pass
 	fi
 
 else
 	echo "6.36	检查内核版本是否处于CVE-2021-43267漏洞影响范围	可选	建议调整	CVE-2021-43267漏洞是Linux内核TIPC模块中的一个堆溢出漏洞，攻击者利用该漏洞可以实现本地或远程代码执行漏洞	5.10-rc1<Linux kernel <5.14.16	$kernel	TRUE		" >>"$csvFile"
 	print_info "$kernel"
 	pass=$((pass + 1))
-	print_pass
+	_echo_pass
 
 fi
 
@@ -2130,4 +2147,5 @@ echo "扫描时间：$da" >>"$csvFile"
 echo "$csvFile----->以保存在当前脚本路径"
 print_dot_line
 
-iconv -f UTF-8 -t GBK $csvFile -o $csvFile
+command -v iconv &&
+	iconv -f UTF-8 -t GBK $csvFile -o $csvFile
